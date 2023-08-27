@@ -3,14 +3,18 @@ package d.andrade.forum.service
 import d.andrade.forum.exception.NotFoundException
 import d.andrade.forum.input.AtualizaTopicoInput
 import d.andrade.forum.input.NovoTopicoInput
-import d.andrade.forum.model.Topico
+import d.andrade.forum.output.TopicoPorCategoria
 import d.andrade.forum.output.TopicoView
 import d.andrade.forum.output.of
+import d.andrade.forum.repository.TopicoRepository
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class TopicoService(
-    private var topicos: List<Topico> = ArrayList(),
+    private val topicoRepository: TopicoRepository,
     private val cursoService: CursoService,
     private val autorService: AutorService
 
@@ -18,44 +22,54 @@ class TopicoService(
 
     private val NOT_FOUND_MESSAGE = "Topico não foi encontrado"
 
-    fun listar(): List<TopicoView> = topicos.map {
+    fun listar(pagina: Pageable): Page<TopicoView> = topicoRepository.findAll(pagina).map {
         TopicoView.of(it)
     }
 
-    fun buscaPorId(id: Long): TopicoView = topicos.find { it.id == id }
-        ?.let {
+    fun buscaPorId(id: Long): TopicoView = topicoRepository.findById(id)
+        .map {
             TopicoView.of(it)
-        } ?: throw NotFoundException(NOT_FOUND_MESSAGE)
+        }.orElseThrow { NotFoundException(NOT_FOUND_MESSAGE) }
 
+    @Transactional
     fun cadastrar(input: NovoTopicoInput): TopicoView {
         val topico = input.toTopic(
             cursoService::buscaPorId,
             autorService::buscaPorId
         )
 
-        val newTopico = topico.copy(id = topicos.size.toLong() + 1)
-        topicos = topicos.plus(
-            newTopico
-        )
+
+        val newTopico = topicoRepository.save(topico)
         return TopicoView.of(newTopico)
     }
 
+    @Transactional
     fun atualizar(id: Long, input: AtualizaTopicoInput): TopicoView {
-        val topico = topicos.find { it.id == id }
-            ?: throw NotFoundException(NOT_FOUND_MESSAGE)
+        val topico = topicoRepository
+            .findById(id)
+            .orElseThrow { NotFoundException(NOT_FOUND_MESSAGE) }
 
         val topicoAtualizado = topico.copy(
             titulo = input.titulo,
             mensagem = input.mensagem
         )
-        topicos = topicos.minus(topico)
-            .plus(topicoAtualizado)
+        topicoRepository.saveAndFlush(topicoAtualizado)
         return TopicoView.of(topicoAtualizado)
     }
 
+    @Transactional
     fun deletar(id: Long) {
-        val topico = topicos.find { it.id == id }
-            ?: throw NotFoundException(NOT_FOUND_MESSAGE)
-        topicos = topicos.minus(topico)
+        val topico = topicoRepository
+            .findById(id)
+            .orElseThrow { NotFoundException(NOT_FOUND_MESSAGE) }
+        topicoRepository.delete(topico)
     }
+
+    fun listarPorCurso(curso: String, pagina: Pageable): Page<TopicoView> =
+        topicoRepository.findByCursoNome(curso, pagina).map {
+            TopicoView.of(it)
+        }
+
+    fun relatorio(): List<TopicoPorCategoria> = topicoRepository.relatorio()
+
 }

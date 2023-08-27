@@ -1,25 +1,15 @@
 package d.andrade.forum.service
 
 import d.andrade.forum.model.Curso
+import d.andrade.forum.repository.CursoRepository
 import org.springframework.stereotype.Service
-import java.util.Arrays
 
 @Service
-class CursoService(var cursos: List<Curso>) {
+class CursoService(private val cursoRepository: CursoRepository) {
 
-    init {
-        cursos = Arrays.asList(Curso(
-            id = 1L,
-            nome = "Kotlin",
-            categoria = "Programação"
-        ))
-
-    }
 
     fun buscaPorId(id: Long): Curso {
-        return cursos
-            .filter { it.id == id }
-            .first()
+        return cursoRepository.getReferenceById(id)
     }
 
 }
