@@ -13,4 +13,8 @@ spring:
     out-of-order: true
 
 
+jwt:
+  secret: xooslol$093sdkkds00399s00dkmc00nd222
+
+
 
